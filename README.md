@@ -1,6 +1,6 @@
 # NYC Taxi Pipeline
 
-End-to-end data engineering pipeline that processes NYC Yellow Taxi data using PySpark on Google Cloud.
+End-to-end data pipeline that processes NYC Yellow Taxi data using PySpark on Google Cloud.
 
 ## Architecture
 
@@ -12,8 +12,7 @@ Cloud Function (Gen2)
         │
         ▼  [launches batch job]
 Dataproc Serverless (PySpark)
-        │  - filters invalid trips
-        │  - aggregates by hour, distance, payment
+        │  - filters invalid trips (distance > 0 and total_amount > 0)
         ▼
 BigQuery (yellow_trips_final)
         │
@@ -33,7 +32,7 @@ SQL Analytics (queries/)
 
 ```
 nyc-taxi-pipeline/
-├── etl_job.py              # PySpark ETL job
+├── etl_job.py              # PySpark ETL job (filter + write)
 ├── cloud_function/
 │   ├── main.py             # GCS trigger → Dataproc launcher
 │   └── requirements.txt
@@ -42,11 +41,14 @@ nyc-taxi-pipeline/
 └── README.md
 ```
 
-## Key results
+## What the Spark job does
 
-- Processed ~160 MB of Parquet data in under 10 seconds on Dataproc Serverless
-- Automated end-to-end: uploading a file to GCS triggers the full pipeline
-- Analytics available in BigQuery (revenue by hour, distance distribution, payment methods)
+The `etl_job.py` script:
+- Reads Parquet files from GCS
+- Filters out invalid trips (`trip_distance <= 0` or `total_amount <= 0`)
+- Writes the cleaned dataset to BigQuery
+
+Aggregation and analytics are done in the SQL queries under `queries/`, not in the Spark job.
 
 ## Deploy (high-level)
 
@@ -65,14 +67,6 @@ gcloud functions deploy trigger_etl \
 # Upload data to start the pipeline
 gsutil cp data/*.parquet gs://YOUR_BUCKET/raw/
 ```
-
-## What I learned
-
-- PySpark DataFrame API (filtering, aggregation, Parquet I/O)
-- Event-driven architecture with Eventarc + Cloud Functions Gen2
-- Dataproc Serverless vs traditional clusters
-- IAM and service accounts in GCP
-- BigQuery for analytical SQL
 
 ## Author
 
